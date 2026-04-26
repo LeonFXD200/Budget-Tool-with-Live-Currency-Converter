@@ -1,1 +1,71 @@
-
+{
+  "name": "BudgetFlow Pro",
+  "short_name": "BudgetFlow",
+  "description": "Personal finance tracker with live currency conversion, AI insights, and budget management.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "orientation": "any",
+  "scope": ".",
+  "lang": "en",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4b0.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4b0.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4b0.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4b0.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4b0.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Add Transaction",
+      "short_name": "Add",
+      "description": "Quickly add a new transaction",
+      "url": "./#transactions",
+      "icons": [{ "src": "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4b3.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View your financial dashboard",
+      "url": "./#dashboard",
+      "icons": [{ "src": "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4ca.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Currency Converter",
+      "short_name": "Convert",
+      "description": "Convert currencies",
+      "url": "./#currency",
+      "icons": [{ "src": "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4b1.png", "sizes": "96x96" }]
+    }
+  ],
+  "screenshots": [],
+  "related_applications": [],
+  "prefer_related_applications": false
+}
