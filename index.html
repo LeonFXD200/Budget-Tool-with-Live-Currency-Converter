@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BudgetFlow</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">💰 BudgetFlow</div>
+    <nav>
+      <button class="nav-btn active" data-tab="dashboard">📊 Dashboard</button>
+      <button class="nav-btn" data-tab="transactions">💳 Transactions</button>
+      <button class="nav-btn" data-tab="converter">🔄 Converter</button>
+      <button class="nav-btn" data-tab="budgets">🎯 Budget Limits</button>
+    </nav>
+    <div class="sidebar-footer">
+      <label>Display Currency</label>
+      <select id="displayCurrency"></select>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- DASHBOARD TAB -->
+    <section id="tab-dashboard" class="tab active">
+      <h1 class="page-title">Dashboard</h1>
+      <div class="summary-cards">
+        <div class="card green">
+          <span class="card-label">Total Income</span>
+          <span class="card-value" id="totalIncome">—</span>
+        </div>
+        <div class="card red">
+          <span class="card-label">Total Expenses</span>
+          <span class="card-value" id="totalExpenses">—</span>
+        </div>
+        <div class="card blue" id="balanceCard">
+          <span class="card-label">Net Balance</span>
+          <span class="card-value" id="netBalance">—</span>
+        </div>
+      </div>
+
+      <div class="charts-row">
+        <div class="chart-card">
+          <h3>Spending by Category</h3>
+          <div class="chart-wrap"><canvas id="donutChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Income vs Expenses</h3>
+          <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="chart-card full-width">
+        <h3>Budget Limits vs Actual Spending</h3>
+        <div id="budgetProgress"></div>
+      </div>
+    </section>
+
+    <!-- TRANSACTIONS TAB -->
+    <section id="tab-transactions" class="tab">
+      <h1 class="page-title">Transactions</h1>
+      <div class="form-card">
+        <h3>Add Transaction</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Type</label>
+            <select id="txType">
+              <option value="income">Income</option>
+              <option value="expense">Expense</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <input type="text" id="txDesc" placeholder="e.g. Salary, Rent..." />
+          </div>
+          <div class="form-group">
+            <label>Category</label>
+            <select id="txCategory">
+              <option value="Salary">Salary</option>
+              <option value="Freelance">Freelance</option>
+              <option value="Investment">Investment</option>
+              <option value="Housing">Housing</option>
+              <option value="Food">Food</option>
+              <option value="Transport">Transport</option>
+              <option value="Healthcare">Healthcare</option>
+              <option value="Entertainment">Entertainment</option>
+              <option value="Shopping">Shopping</option>
+              <option value="Utilities">Utilities</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Amount</label>
+            <input type="number" id="txAmount" placeholder="0.00" min="0" step="0.01"/>
+          </div>
+          <div class="form-group">
+            <label>Currency</label>
+            <select id="txCurrency"></select>
+          </div>
+          <div class="form-group">
+            <label>Date</label>
+            <input type="date" id="txDate"/>
+          </div>
+        </div>
+        <button class="btn-primary" id="addTxBtn">+ Add Transaction</button>
+      </div>
+
+      <div class="table-card">
+        <div class="table-header">
+          <h3>Transaction History</h3>
+          <input type="text" id="searchTx" placeholder="🔍 Search..." class="search-input"/>
+        </div>
+        <div class="table-wrap">
+          <table id="txTable">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Category</th>
+                <th>Type</th>
+                <th>Amount</th>
+                <th>In Display Currency</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="txBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONVERTER TAB -->
+    <section id="tab-converter" class="tab">
+      <h1 class="page-title">Currency Converter</h1>
+      <div class="converter-card">
+        <div class="rate-status" id="rateStatus">Loading live rates...</div>
+        <div class="converter-grid">
+          <div class="form-group">
+            <label>Amount</label>
+            <input type="number" id="convAmount" value="1" min="0" step="0.01"/>
+          </div>
+          <div class="form-group">
+            <label>From</label>
+            <select id="convFrom"></select>
+          </div>
+          <button class="swap-btn" id="swapBtn">⇄</button>
+          <div class="form-group">
+            <label>To</label>
+            <select id="convTo"></select>
+          </div>
+        </div>
+        <div class="conv-result" id="convResult">—</div>
+        <div class="conv-rate" id="convRate"></div>
+      </div>
+
+      <div class="table-card">
+        <h3>All Rates vs <span id="baseLabel">USD</span></h3>
+        <input type="text" id="searchRate" placeholder="🔍 Filter currencies..." class="search-input" style="margin-bottom:1rem"/>
+        <div class="rates-grid" id="ratesGrid"></div>
+      </div>
+    </section>
+
+    <!-- BUDGET LIMITS TAB -->
+    <section id="tab-budgets" class="tab">
+      <h1 class="page-title">Budget Limits</h1>
+      <div class="form-card">
+        <h3>Set Monthly Limit</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Category</label>
+            <select id="budgetCategory">
+              <option value="Housing">Housing</option>
+              <option value="Food">Food</option>
+              <option value="Transport">Transport</option>
+              <option value="Healthcare">Healthcare</option>
+              <option value="Entertainment">Entertainment</option>
+              <option value="Shopping">Shopping</option>
+              <option value="Utilities">Utilities</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Limit (in display currency)</label>
+            <input type="number" id="budgetLimit" placeholder="0.00" min="0" step="0.01"/>
+          </div>
+        </div>
+        <button class="btn-primary" id="setBudgetBtn">Set Limit</button>
+      </div>
+      <div class="table-card">
+        <h3>Current Limits</h3>
+        <div id="budgetLimitsList"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
