@@ -1326,13 +1326,3 @@ function renderSettings() {
   renderCustomCategoriesList();
   renderProfileList();
 }
-
-function renderCustomCategoriesList() {
-  const el = document.getElementById('customCategoriesList');
-  if (!S.customCategories.length) { el.innerHTML='<p class="no-data">No custom categories.</p>'; return; }
-  el.innerHTML = S.customCategories.map(c=>`
-    <div class="category-item">
-      <div class="cat-dot" style="background:${c.color}"></div>
-      <span>${c.icon} ${c.name}</span>
-      <span style="color:var(--text-muted);margin-left:auto;font-size:.75rem">${c.type}</span>
-      <button class="delete-btn" onclick="deleteCustomCat('${c.id}')">🗑</button>
