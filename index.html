@@ -1,205 +1,590 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr" data-theme="dark" data-density="comfortable" data-fontsize="medium">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>BudgetFlow</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta name="theme-color" content="#0d1117"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <link rel="manifest" href="manifest.json"/>
+  <title>BudgetFlow Pro</title>
+  <link rel="stylesheet" href="styles.css"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
-    <div class="logo">💰 BudgetFlow</div>
-    <nav>
-      <button class="nav-btn active" data-tab="dashboard">📊 Dashboard</button>
-      <button class="nav-btn" data-tab="transactions">💳 Transactions</button>
-      <button class="nav-btn" data-tab="converter">🔄 Converter</button>
-      <button class="nav-btn" data-tab="budgets">🎯 Budget Limits</button>
-    </nav>
-    <div class="sidebar-footer">
-      <label>Display Currency</label>
-      <select id="displayCurrency"></select>
+<!-- PIN OVERLAY -->
+<div id="pinOverlay" class="pin-overlay hidden" role="dialog" aria-modal="true" aria-label="PIN Lock">
+  <div class="pin-box">
+    <div class="pin-logo">💰 BudgetFlow Pro</div>
+    <p>Enter your PIN to unlock</p>
+    <div class="pin-dots" id="pinDots"><span></span><span></span><span></span><span></span></div>
+    <div class="pin-pad">
+      <button class="pin-key" data-k="1">1</button><button class="pin-key" data-k="2">2</button><button class="pin-key" data-k="3">3</button>
+      <button class="pin-key" data-k="4">4</button><button class="pin-key" data-k="5">5</button><button class="pin-key" data-k="6">6</button>
+      <button class="pin-key" data-k="7">7</button><button class="pin-key" data-k="8">8</button><button class="pin-key" data-k="9">9</button>
+      <button class="pin-key" data-k="clear">⌫</button><button class="pin-key" data-k="0">0</button><button class="pin-key" data-k="submit">✓</button>
     </div>
-  </aside>
+    <p id="pinError" class="pin-error hidden">Incorrect PIN. Try again.</p>
+  </div>
+</div>
 
-  <!-- MAIN -->
-  <main class="main">
+<!-- TOAST -->
+<div id="toastContainer" aria-live="polite"></div>
 
-    <!-- DASHBOARD TAB -->
-    <section id="tab-dashboard" class="tab active">
+<!-- MODAL: Split Transaction -->
+<div id="splitModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="splitModalTitle">
+  <div class="modal">
+    <div class="modal-header"><h3 id="splitModalTitle">Split Transaction</h3><button class="modal-close" data-modal="splitModal" aria-label="Close">✕</button></div>
+    <div class="modal-body">
+      <p class="modal-hint">Total: <strong id="splitTotal">—</strong>. Splits must add up to total.</p>
+      <div id="splitRows"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" id="addSplitRow">+ Row</button>
+      <span id="splitRemaining" class="split-remaining"></span>
+      <button class="btn-primary" id="confirmSplit">Confirm Split</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Custom Category -->
+<div id="categoryModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="catModalTitle">
+  <div class="modal">
+    <div class="modal-header"><h3 id="catModalTitle">Custom Category</h3><button class="modal-close" data-modal="categoryModal" aria-label="Close">✕</button></div>
+    <div class="modal-body">
+      <div class="form-stack">
+        <div class="form-group"><label>Name</label><input type="text" id="catName" placeholder="Category name"/></div>
+        <div class="form-group"><label>Icon (emoji)</label><input type="text" id="catIcon" placeholder="🏠" maxlength="2"/></div>
+        <div class="form-group"><label>Colour</label><input type="color" id="catColor" value="#58a6ff"/></div>
+        <div class="form-group"><label>Type</label>
+          <select id="catType"><option value="expense">Expense</option><option value="income">Income</option><option value="both">Both</option></select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn-primary" id="saveCategoryBtn">Save Category</button></div>
+  </div>
+</div>
+
+<!-- MODAL: Rate Alert -->
+<div id="rateAlertModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="alertModalTitle">
+  <div class="modal">
+    <div class="modal-header"><h3 id="alertModalTitle">Set Rate Alert</h3><button class="modal-close" data-modal="rateAlertModal" aria-label="Close">✕</button></div>
+    <div class="modal-body">
+      <div class="form-stack">
+        <div class="form-group"><label>From Currency</label><select id="alertFrom"></select></div>
+        <div class="form-group"><label>To Currency</label><select id="alertTo"></select></div>
+        <div class="form-group"><label>Condition</label>
+          <select id="alertCond"><option value="above">Goes above</option><option value="below">Goes below</option></select>
+        </div>
+        <div class="form-group"><label>Target Rate</label><input type="number" id="alertTarget" placeholder="0.0000" step="0.0001"/></div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn-primary" id="saveAlertBtn">Save Alert</button></div>
+  </div>
+</div>
+
+<!-- MODAL: Activity Log -->
+<div id="logModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="logModalTitle">
+  <div class="modal modal-wide">
+    <div class="modal-header"><h3 id="logModalTitle">Activity Log</h3><button class="modal-close" data-modal="logModal" aria-label="Close">✕</button></div>
+    <div class="modal-body" id="logContent" style="max-height:400px;overflow-y:auto"></div>
+  </div>
+</div>
+
+<!-- MODAL: Year in Review -->
+<div id="reviewModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="reviewModalTitle">
+  <div class="modal modal-wide">
+    <div class="modal-header"><h3 id="reviewModalTitle">Year in Review</h3><button class="modal-close" data-modal="reviewModal" aria-label="Close">✕</button></div>
+    <div class="modal-body" id="reviewContent"></div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar" aria-label="Main navigation">
+  <div class="sidebar-header">
+    <div class="logo">💰<span class="logo-text"> BudgetFlow Pro</span></div>
+    <button class="collapse-btn" id="collapseBtn" aria-label="Collapse sidebar" aria-expanded="true">‹</button>
+  </div>
+  <nav id="mainNav" role="navigation">
+    <button class="nav-btn active" data-tab="dashboard"    title="Dashboard">📊<span> Dashboard</span></button>
+    <button class="nav-btn" data-tab="transactions"        title="Transactions">💳<span> Transactions</span></button>
+    <button class="nav-btn" data-tab="analytics"           title="Analytics">📈<span> Analytics</span></button>
+    <button class="nav-btn" data-tab="goals"               title="Goals & Debts">🎯<span> Goals & Debts</span></button>
+    <button class="nav-btn" data-tab="networth"            title="Net Worth">💎<span> Net Worth</span></button>
+    <button class="nav-btn" data-tab="bills"               title="Bills">📅<span> Bills</span></button>
+    <button class="nav-btn" data-tab="currency"            title="Currency">🔄<span> Currency</span></button>
+    <button class="nav-btn" data-tab="ai"                  title="AI Assistant">🤖<span> AI Assistant</span></button>
+    <button class="nav-btn" data-tab="settings"            title="Settings">⚙️<span> Settings</span></button>
+  </nav>
+  <div class="sidebar-bottom">
+    <div class="form-group"><label class="sidebar-label"><span>Profile</span></label><select id="profileSelect" aria-label="Select profile"></select></div>
+    <div class="form-group"><label class="sidebar-label"><span>Currency</span></label><select id="displayCurrency" aria-label="Display currency"></select></div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main" id="mainContent">
+
+  <!-- ══ DASHBOARD ══ -->
+  <section id="tab-dashboard" class="tab active" role="main" aria-label="Dashboard">
+    <div class="page-header">
       <h1 class="page-title">Dashboard</h1>
-      <div class="summary-cards">
-        <div class="card green">
-          <span class="card-label">Total Income</span>
-          <span class="card-value" id="totalIncome">—</span>
-        </div>
-        <div class="card red">
-          <span class="card-label">Total Expenses</span>
-          <span class="card-value" id="totalExpenses">—</span>
-        </div>
-        <div class="card blue" id="balanceCard">
-          <span class="card-label">Net Balance</span>
-          <span class="card-value" id="netBalance">—</span>
-        </div>
+      <div class="page-actions">
+        <button class="btn-ghost" id="refreshRatesBtn">🔄 Refresh Rates</button>
+        <span class="rate-badge" id="rateBadge">Loading rates...</span>
       </div>
-
-      <div class="charts-row">
-        <div class="chart-card">
-          <h3>Spending by Category</h3>
-          <div class="chart-wrap"><canvas id="donutChart"></canvas></div>
-        </div>
-        <div class="chart-card">
-          <h3>Income vs Expenses</h3>
-          <div class="chart-wrap"><canvas id="barChart"></canvas></div>
-        </div>
+    </div>
+    <div id="alertsBanner"></div>
+    <div class="summary-cards">
+      <div class="card green"><span class="card-label">Total Income</span><span class="card-value" id="totalIncome">—</span></div>
+      <div class="card red"><span class="card-label">Total Expenses</span><span class="card-value" id="totalExpenses">—</span></div>
+      <div class="card blue" id="balanceCard"><span class="card-label">Net Balance</span><span class="card-value" id="netBalance">—</span></div>
+      <div class="card purple"><span class="card-label">Net Worth</span><span class="card-value" id="dashNetWorth">—</span></div>
+    </div>
+    <div class="charts-row">
+      <div class="chart-card"><h3>Spending by Category</h3><div class="chart-wrap"><canvas id="donutChart"></canvas></div></div>
+      <div class="chart-card"><h3>Income vs Expenses</h3><div class="chart-wrap"><canvas id="barChart"></canvas></div></div>
+    </div>
+    <div class="charts-row">
+      <div class="chart-card"><h3>Cash Flow Timeline</h3><div class="chart-wrap"><canvas id="cashFlowChart"></canvas></div></div>
+      <div class="chart-card">
+        <h3>Month Forecast</h3>
+        <div id="forecastCard" class="forecast-content"></div>
       </div>
+    </div>
+    <div class="chart-card"><h3>Budget Limits vs Actual</h3><div id="budgetProgress"></div></div>
+    <div class="charts-row">
+      <div class="chart-card"><h3>🔥 Biggest Expenses This Month</h3><div id="biggestExpenses"></div></div>
+      <div class="chart-card"><h3>🏆 Spending Streak</h3><div id="spendingStreak"></div></div>
+    </div>
+  </section>
 
-      <div class="chart-card full-width">
-        <h3>Budget Limits vs Actual Spending</h3>
-        <div id="budgetProgress"></div>
-      </div>
-    </section>
-
-    <!-- TRANSACTIONS TAB -->
-    <section id="tab-transactions" class="tab">
+  <!-- ══ TRANSACTIONS ══ -->
+  <section id="tab-transactions" class="tab" aria-label="Transactions">
+    <div class="page-header">
       <h1 class="page-title">Transactions</h1>
-      <div class="form-card">
-        <h3>Add Transaction</h3>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Type</label>
-            <select id="txType">
-              <option value="income">Income</option>
-              <option value="expense">Expense</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Description</label>
-            <input type="text" id="txDesc" placeholder="e.g. Salary, Rent..." />
-          </div>
-          <div class="form-group">
-            <label>Category</label>
-            <select id="txCategory">
-              <option value="Salary">Salary</option>
-              <option value="Freelance">Freelance</option>
-              <option value="Investment">Investment</option>
-              <option value="Housing">Housing</option>
-              <option value="Food">Food</option>
-              <option value="Transport">Transport</option>
-              <option value="Healthcare">Healthcare</option>
-              <option value="Entertainment">Entertainment</option>
-              <option value="Shopping">Shopping</option>
-              <option value="Utilities">Utilities</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Amount</label>
-            <input type="number" id="txAmount" placeholder="0.00" min="0" step="0.01"/>
-          </div>
-          <div class="form-group">
-            <label>Currency</label>
-            <select id="txCurrency"></select>
-          </div>
-          <div class="form-group">
-            <label>Date</label>
-            <input type="date" id="txDate"/>
-          </div>
+      <div class="page-actions">
+        <button class="btn-ghost" id="undoBtn" title="Ctrl+Z" aria-label="Undo">↩ Undo</button>
+        <button class="btn-ghost" id="redoBtn" title="Ctrl+Y" aria-label="Redo">↪ Redo</button>
+        <button class="btn-ghost" id="importCsvBtn">📥 Import CSV</button>
+        <input type="file" id="csvFile" accept=".csv" hidden aria-label="Import CSV file"/>
+        <button class="btn-ghost" id="exportCsvBtn">📤 Export CSV</button>
+      </div>
+    </div>
+    <div class="form-card">
+      <h3>Add Transaction</h3>
+      <div class="form-grid">
+        <div class="form-group"><label for="txType">Type</label>
+          <select id="txType"><option value="income">Income</option><option value="expense">Expense</option></select>
         </div>
+        <div class="form-group"><label for="txDesc">Description</label><input type="text" id="txDesc" placeholder="e.g. Salary, Rent..."/></div>
+        <div class="form-group"><label for="txCategory">Category</label><select id="txCategory"></select></div>
+        <div class="form-group"><label for="txAmount">Amount</label><input type="number" id="txAmount" placeholder="0.00" min="0" step="0.01"/></div>
+        <div class="form-group"><label for="txCurrency">Currency</label><select id="txCurrency"></select></div>
+        <div class="form-group"><label for="txDate">Date</label><input type="date" id="txDate"/></div>
+        <div class="form-group"><label for="txTags">Tags</label><input type="text" id="txTags" placeholder="tag1, tag2..."/></div>
+        <div class="form-group"><label for="txRecurring">Recurring</label>
+          <select id="txRecurring"><option value="none">None</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select>
+        </div>
+        <div class="form-group align-end"><button class="btn-secondary" id="splitTxBtn">✂ Split</button></div>
+      </div>
+      <div class="form-actions">
         <button class="btn-primary" id="addTxBtn">+ Add Transaction</button>
+        <button class="btn-ghost" id="aiCategoriseBtn">🤖 Auto-Categorise</button>
       </div>
+    </div>
+    <div class="filter-bar">
+      <input type="text" id="searchTx" placeholder="🔍 Search..." aria-label="Search transactions"/>
+      <select id="filterType" aria-label="Filter by type"><option value="">All Types</option><option value="income">Income</option><option value="expense">Expense</option></select>
+      <select id="filterCategory" aria-label="Filter by category"><option value="">All Categories</option></select>
+      <select id="filterTag" aria-label="Filter by tag"><option value="">All Tags</option></select>
+      <input type="month" id="filterMonth" aria-label="Filter by month"/>
+      <button class="btn-ghost" id="bulkDeleteBtn">🗑 Delete Selected</button>
+    </div>
+    <div class="table-card">
+      <div class="table-wrap">
+        <table id="txTable" role="table" aria-label="Transactions">
+          <thead><tr>
+            <th><input type="checkbox" id="selectAll" aria-label="Select all"/></th>
+            <th>Date</th><th>Description</th><th>Category</th><th>Tags</th><th>Type</th>
+            <th>Amount</th><th>In <span id="displayCurrLabel"></span></th><th>Recurring</th><th></th>
+          </tr></thead>
+          <tbody id="txBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
 
-      <div class="table-card">
-        <div class="table-header">
-          <h3>Transaction History</h3>
-          <input type="text" id="searchTx" placeholder="🔍 Search..." class="search-input"/>
+  <!-- ══ ANALYTICS ══ -->
+  <section id="tab-analytics" class="tab" aria-label="Analytics">
+    <div class="page-header">
+      <h1 class="page-title">Analytics</h1>
+      <div class="page-actions">
+        <select id="analyticsYear" aria-label="Select year"></select>
+        <button class="btn-ghost" id="yearReviewBtn">🗓 Year in Review</button>
+        <button class="btn-ghost" id="printReportBtn2">🖨️ Print Report</button>
+      </div>
+    </div>
+    <div class="stats-row" id="statsRow"></div>
+    <div class="charts-row">
+      <div class="chart-card"><h3>Monthly Trends</h3><div class="chart-wrap"><canvas id="trendsChart"></canvas></div></div>
+      <div class="chart-card"><h3>Income Sources</h3><div class="chart-wrap"><canvas id="incomeSourceChart"></canvas></div></div>
+    </div>
+    <div class="charts-row">
+      <div class="chart-card"><h3>Category Month-on-Month</h3><div class="chart-wrap"><canvas id="momChart"></canvas></div></div>
+      <div class="chart-card">
+        <h3>Category Drilldown</h3>
+        <select id="drillCategory" style="margin-bottom:.75rem" aria-label="Select category for drilldown"></select>
+        <div class="chart-wrap"><canvas id="drillChart"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ GOALS & DEBTS ══ -->
+  <section id="tab-goals" class="tab" aria-label="Goals and Debts">
+    <div class="page-header"><h1 class="page-title">Goals & Debts</h1></div>
+    <div class="two-col">
+      <div>
+        <div class="form-card">
+          <h3>🎯 New Savings Goal</h3>
+          <div class="form-stack">
+            <div class="form-group"><label>Goal Name</label><input type="text" id="goalName" placeholder="Emergency Fund..."/></div>
+            <div class="form-group"><label>Target Amount</label><input type="number" id="goalTarget" placeholder="0.00" min="0" step="0.01"/></div>
+            <div class="form-group"><label>Already Saved</label><input type="number" id="goalSaved" placeholder="0.00" min="0" step="0.01"/></div>
+            <div class="form-group"><label>Target Date</label><input type="date" id="goalDate"/></div>
+            <div class="form-group"><label>Icon (emoji)</label><input type="text" id="goalIcon" placeholder="🏖" maxlength="2"/></div>
+            <button class="btn-primary" id="addGoalBtn">Add Goal</button>
+          </div>
         </div>
-        <div class="table-wrap">
-          <table id="txTable">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Description</th>
-                <th>Category</th>
-                <th>Type</th>
-                <th>Amount</th>
-                <th>In Display Currency</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="txBody"></tbody>
-          </table>
+        <div id="goalsList"></div>
+      </div>
+      <div>
+        <div class="form-card">
+          <h3>💳 Add Debt</h3>
+          <div class="form-stack">
+            <div class="form-group"><label>Name</label><input type="text" id="debtName" placeholder="Credit Card, Loan..."/></div>
+            <div class="form-group"><label>Balance Owed</label><input type="number" id="debtTotal" placeholder="0.00" min="0" step="0.01"/></div>
+            <div class="form-group"><label>Interest Rate (%)</label><input type="number" id="debtRate" placeholder="0.0" min="0" step="0.1"/></div>
+            <div class="form-group"><label>Monthly Payment</label><input type="number" id="debtPayment" placeholder="0.00" min="0" step="0.01"/></div>
+            <div class="form-group"><label>Type</label>
+              <select id="debtType"><option value="credit_card">Credit Card</option><option value="loan">Loan</option><option value="mortgage">Mortgage</option><option value="other">Other</option></select>
+            </div>
+            <button class="btn-primary" id="addDebtBtn">Add Debt</button>
+          </div>
+        </div>
+        <div id="debtsList"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ NET WORTH ══ -->
+  <section id="tab-networth" class="tab" aria-label="Net Worth">
+    <div class="page-header"><h1 class="page-title">Net Worth</h1></div>
+    <div class="summary-cards">
+      <div class="card green"><span class="card-label">Total Assets</span><span class="card-value" id="totalAssets">—</span></div>
+      <div class="card red"><span class="card-label">Total Liabilities</span><span class="card-value" id="totalLiabilities">—</span></div>
+      <div class="card blue"><span class="card-label">Net Worth</span><span class="card-value" id="netWorthValue">—</span></div>
+    </div>
+    <div class="two-col">
+      <div class="form-card">
+        <h3>➕ Assets</h3>
+        <div class="form-stack">
+          <div class="form-group"><label>Name</label><input type="text" id="assetName" placeholder="Savings Account..."/></div>
+          <div class="form-group"><label>Value</label><input type="number" id="assetValue" placeholder="0.00" min="0" step="0.01"/></div>
+          <div class="form-group"><label>Category</label>
+            <select id="assetCat"><option value="cash">Cash/Bank</option><option value="property">Property</option><option value="vehicle">Vehicle</option><option value="investment">Investment</option><option value="other">Other</option></select>
+          </div>
+          <button class="btn-primary" id="addAssetBtn">Add Asset</button>
+        </div>
+        <div id="assetsList" style="margin-top:1rem"></div>
+      </div>
+      <div class="form-card">
+        <h3>➖ Liabilities</h3>
+        <div class="form-stack">
+          <div class="form-group"><label>Name</label><input type="text" id="liabName" placeholder="Mortgage..."/></div>
+          <div class="form-group"><label>Amount Owed</label><input type="number" id="liabValue" placeholder="0.00" min="0" step="0.01"/></div>
+          <div class="form-group"><label>Category</label>
+            <select id="liabCat"><option value="mortgage">Mortgage</option><option value="loan">Loan</option><option value="credit_card">Credit Card</option><option value="other">Other</option></select>
+          </div>
+          <button class="btn-primary" id="addLiabBtn">Add Liability</button>
+        </div>
+        <div id="liabsList" style="margin-top:1rem"></div>
+      </div>
+    </div>
+    <div class="form-card" style="margin-top:1rem">
+      <h3>📈 Investment Portfolio</h3>
+      <div class="form-grid">
+        <div class="form-group"><label>Name / Ticker</label><input type="text" id="invName" placeholder="AAPL, BTC..."/></div>
+        <div class="form-group"><label>Quantity</label><input type="number" id="invQty" placeholder="0" min="0" step="0.001"/></div>
+        <div class="form-group"><label>Buy Price</label><input type="number" id="invBuy" placeholder="0.00" min="0" step="0.01"/></div>
+        <div class="form-group"><label>Current Price</label><input type="number" id="invCurrent" placeholder="0.00" min="0" step="0.01"/></div>
+        <div class="form-group"><label>Currency</label><select id="invCurrency"></select></div>
+        <div class="form-group align-end"><button class="btn-primary" id="addInvBtn">Add</button></div>
+      </div>
+      <div id="invList" style="margin-top:1rem"></div>
+    </div>
+  </section>
+
+  <!-- ══ BILLS ══ -->
+  <section id="tab-bills" class="tab" aria-label="Bills and Reminders">
+    <div class="page-header"><h1 class="page-title">Bills & Reminders</h1></div>
+    <div class="form-card">
+      <h3>Add Bill</h3>
+      <div class="form-grid">
+        <div class="form-group"><label>Bill Name</label><input type="text" id="billName" placeholder="Netflix, Rent..."/></div>
+        <div class="form-group"><label>Amount</label><input type="number" id="billAmount" placeholder="0.00" min="0" step="0.01"/></div>
+        <div class="form-group"><label>Currency</label><select id="billCurrency"></select></div>
+        <div class="form-group"><label>Due Day (1–31)</label><input type="number" id="billDay" placeholder="1" min="1" max="31"/></div>
+        <div class="form-group"><label>Category</label><select id="billCategory"></select></div>
+        <div class="form-group"><label>Frequency</label>
+          <select id="billFreq"><option value="monthly">Monthly</option><option value="yearly">Yearly</option><option value="weekly">Weekly</option></select>
         </div>
       </div>
-    </section>
+      <button class="btn-primary" id="addBillBtn">Add Bill</button>
+    </div>
+    <div class="table-card"><h3>Upcoming Bills</h3><div id="billsList"></div></div>
+  </section>
 
-    <!-- CONVERTER TAB -->
-    <section id="tab-converter" class="tab">
-      <h1 class="page-title">Currency Converter</h1>
+  <!-- ══ CURRENCY ══ -->
+  <section id="tab-currency" class="tab" aria-label="Currency tools">
+    <div class="page-header"><h1 class="page-title">Currency</h1></div>
+    <div class="currency-tabs" role="tablist">
+      <button class="cur-tab active" data-curtab="converter" role="tab" aria-selected="true">Converter</button>
+      <button class="cur-tab" data-curtab="wallet" role="tab">Wallet</button>
+      <button class="cur-tab" data-curtab="rates" role="tab">Rates Table</button>
+      <button class="cur-tab" data-curtab="alerts" role="tab">Rate Alerts</button>
+      <button class="cur-tab" data-curtab="ppp" role="tab">PPP</button>
+    </div>
+
+    <div id="curtab-converter" class="curtab">
       <div class="converter-card">
         <div class="rate-status" id="rateStatus">Loading live rates...</div>
         <div class="converter-grid">
-          <div class="form-group">
-            <label>Amount</label>
-            <input type="number" id="convAmount" value="1" min="0" step="0.01"/>
-          </div>
-          <div class="form-group">
-            <label>From</label>
-            <select id="convFrom"></select>
-          </div>
-          <button class="swap-btn" id="swapBtn">⇄</button>
-          <div class="form-group">
-            <label>To</label>
-            <select id="convTo"></select>
-          </div>
+          <div class="form-group"><label>Amount</label><input type="number" id="convAmount" value="1" min="0" step="0.01"/></div>
+          <div class="form-group"><label>From</label><select id="convFrom"></select></div>
+          <button class="swap-btn" id="swapBtn" aria-label="Swap currencies">⇄</button>
+          <div class="form-group"><label>To</label><select id="convTo"></select></div>
         </div>
-        <div class="conv-result" id="convResult">—</div>
+        <div class="conv-result" id="convResult" aria-live="polite">—</div>
         <div class="conv-rate" id="convRate"></div>
       </div>
+      <div class="chart-card">
+        <h3>Side-by-side Comparison — <span id="compareFrom">USD</span></h3>
+        <div class="rates-grid" id="compareGrid"></div>
+      </div>
+    </div>
 
+    <div id="curtab-wallet" class="curtab hidden">
+      <div class="form-card">
+        <h3>Multi-Currency Wallet</h3>
+        <div class="form-grid">
+          <div class="form-group"><label>Currency</label><select id="walletCurrency"></select></div>
+          <div class="form-group"><label>Balance</label><input type="number" id="walletBalance" placeholder="0.00" min="0" step="0.01"/></div>
+          <div class="form-group align-end"><button class="btn-primary" id="addWalletBtn">Add / Update</button></div>
+        </div>
+      </div>
+      <div class="table-card"><h3>My Balances</h3><div id="walletList"></div></div>
+    </div>
+
+    <div id="curtab-rates" class="curtab hidden">
       <div class="table-card">
-        <h3>All Rates vs <span id="baseLabel">USD</span></h3>
-        <input type="text" id="searchRate" placeholder="🔍 Filter currencies..." class="search-input" style="margin-bottom:1rem"/>
+        <div class="table-header">
+          <h3>All Rates vs <span id="baseLabel"></span></h3>
+          <input type="text" id="searchRate" placeholder="🔍 Filter currencies..." class="search-input" aria-label="Filter currencies"/>
+        </div>
         <div class="rates-grid" id="ratesGrid"></div>
       </div>
-    </section>
+    </div>
 
-    <!-- BUDGET LIMITS TAB -->
-    <section id="tab-budgets" class="tab">
-      <h1 class="page-title">Budget Limits</h1>
+    <div id="curtab-alerts" class="curtab hidden">
+      <div class="table-card">
+        <div class="table-header"><h3>Rate Alerts</h3><button class="btn-primary" id="newAlertBtn">+ New Alert</button></div>
+        <div id="alertsList"></div>
+      </div>
+    </div>
+
+    <div id="curtab-ppp" class="curtab hidden">
       <div class="form-card">
-        <h3>Set Monthly Limit</h3>
+        <h3>Purchasing Power Parity</h3>
+        <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:1rem">Compare purchasing power using Big Mac Index approximations.</p>
         <div class="form-grid">
-          <div class="form-group">
-            <label>Category</label>
-            <select id="budgetCategory">
-              <option value="Housing">Housing</option>
-              <option value="Food">Food</option>
-              <option value="Transport">Transport</option>
-              <option value="Healthcare">Healthcare</option>
-              <option value="Entertainment">Entertainment</option>
-              <option value="Shopping">Shopping</option>
-              <option value="Utilities">Utilities</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Limit (in display currency)</label>
-            <input type="number" id="budgetLimit" placeholder="0.00" min="0" step="0.01"/>
+          <div class="form-group"><label>Amount</label><input type="number" id="pppAmount" value="100" min="0" step="1"/></div>
+          <div class="form-group"><label>From</label><select id="pppFrom"></select></div>
+          <div class="form-group"><label>To</label><select id="pppTo"></select></div>
+        </div>
+        <div class="conv-result" id="pppResult"></div>
+        <div class="conv-rate" id="pppNote"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ AI ASSISTANT ══ -->
+  <section id="tab-ai" class="tab" aria-label="AI Assistant">
+    <div class="page-header"><h1 class="page-title">AI Assistant</h1></div>
+    <div class="ai-grid">
+      <div class="ai-chat-card">
+        <div id="aiMessages" class="ai-messages" role="log" aria-live="polite">
+          <div class="ai-msg assistant"><div class="ai-bubble">👋 Hi! I'm your AI financial assistant. Ask me anything — spending analysis, tax estimate, anomaly check, or "How much did I spend on food last month?"<br><br><em>Note: AI features require an Anthropic API key (set in Settings) when running as a local file.</em></div></div>
+        </div>
+        <div class="ai-input-row">
+          <input type="text" id="aiInput" placeholder="Ask anything about your finances..." aria-label="Ask AI"/>
+          <button class="btn-primary" id="aiSendBtn">Send</button>
+        </div>
+      </div>
+      <div class="ai-sidebar">
+        <div class="form-card">
+          <h3>Quick Actions</h3>
+          <div class="ai-quick-btns">
+            <button class="ai-quick-btn" data-prompt="Give me a full spending analysis for this month including category breakdowns and trends.">📊 Spending Analysis</button>
+            <button class="ai-quick-btn" data-prompt="What are my top 3 areas to cut spending based on my transaction history?">✂️ Cut Spending Tips</button>
+            <button class="ai-quick-btn" data-prompt="Estimate my income tax liability based on my income transactions. Use UK tax brackets.">🧾 Tax Estimate</button>
+            <button class="ai-quick-btn" data-prompt="Detect any unusual or anomalous transactions that stand out from my normal spending patterns.">🚨 Anomaly Check</button>
+            <button class="ai-quick-btn" data-prompt="Forecast my end-of-month balance based on current spending trends this month.">🔮 Forecast</button>
+            <button class="ai-quick-btn" data-prompt="Give me personalised financial advice and actionable steps based on my budget data.">💡 Financial Advice</button>
+            <button class="ai-quick-btn" data-prompt="What spending patterns do I have on weekends vs weekdays?">📅 Weekend vs Weekday</button>
           </div>
         </div>
-        <button class="btn-primary" id="setBudgetBtn">Set Limit</button>
+        <div class="form-card">
+          <h3>📷 Receipt Scanner</h3>
+          <input type="file" id="receiptInput" accept="image/*" hidden aria-label="Upload receipt"/>
+          <button class="btn-ghost" id="receiptBtn" style="width:100%">Upload Receipt Image</button>
+          <p style="color:var(--text-muted);font-size:.8rem;margin-top:.5rem">AI will auto-fill a transaction from the receipt.</p>
+        </div>
       </div>
-      <div class="table-card">
-        <h3>Current Limits</h3>
-        <div id="budgetLimitsList"></div>
+    </div>
+  </section>
+
+  <!-- ══ SETTINGS ══ -->
+  <section id="tab-settings" class="tab" aria-label="Settings">
+    <div class="page-header"><h1 class="page-title">Settings</h1></div>
+    <div class="settings-grid">
+
+      <div class="form-card">
+        <h3>🎨 Appearance</h3>
+        <div class="form-stack">
+          <div class="form-group"><label>Theme</label>
+            <select id="themeSelect" aria-label="Select theme"><option value="dark">Dark</option><option value="light">Light</option></select>
+          </div>
+          <div class="form-group"><label>Accent Colour</label><div class="color-swatches" id="colorSwatches" role="group" aria-label="Select accent colour"></div></div>
+          <div class="form-group"><label>View Density</label>
+            <select id="densitySelect"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select>
+          </div>
+          <div class="form-group"><label>Font Size</label>
+            <select id="fontSizeSelect"><option value="small">Small (12px)</option><option value="medium">Medium (14px)</option><option value="large">Large (16px)</option><option value="xlarge">X-Large (18px)</option></select>
+          </div>
+        </div>
       </div>
-    </section>
 
-  </main>
+      <div class="form-card">
+        <h3>🌍 Localisation</h3>
+        <div class="form-stack">
+          <div class="form-group"><label>Language</label>
+            <select id="langSelect"><option value="en">English</option><option value="fr">Français</option><option value="es">Español</option><option value="de">Deutsch</option><option value="ar">العربية (RTL)</option></select>
+          </div>
+          <div class="form-group"><label>Date Format</label>
+            <select id="dateFormatSelect"><option value="DD/MM/YYYY">DD/MM/YYYY</option><option value="MM/DD/YYYY">MM/DD/YYYY</option><option value="YYYY-MM-DD">ISO</option></select>
+          </div>
+          <div class="form-group"><label>Number Format</label>
+            <select id="numberFormatSelect"><option value="en-GB">1,234.56 (UK)</option><option value="en-US">1,234.56 (US)</option><option value="de-DE">1.234,56 (EU)</option></select>
+          </div>
+        </div>
+      </div>
 
-  <script src="app.js"></script>
+      <div class="form-card">
+        <h3>🔔 Notifications</h3>
+        <div class="form-stack">
+          <label class="toggle-label"><span>Bill Due Reminders</span><input type="checkbox" id="notifBills" class="toggle-cb"/><span class="toggle-slider"></span></label>
+          <label class="toggle-label"><span>Over-budget Warnings</span><input type="checkbox" id="notifBudget" class="toggle-cb"/><span class="toggle-slider"></span></label>
+          <label class="toggle-label"><span>Savings Goal Milestones</span><input type="checkbox" id="notifGoals" class="toggle-cb"/><span class="toggle-slider"></span></label>
+          <div class="form-group"><label>Low Balance Warning (in display currency)</label><input type="number" id="lowBalThreshold" placeholder="0.00" min="0" step="0.01"/></div>
+          <button class="btn-ghost" id="requestNotifBtn">Enable Browser Notifications</button>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <h3>🔐 Security</h3>
+        <div class="form-stack">
+          <div class="form-group"><label>Set PIN (4 digits)</label><input type="password" id="pinInputA" maxlength="4" placeholder="4-digit PIN" inputmode="numeric"/></div>
+          <div class="form-group"><label>Confirm PIN</label><input type="password" id="pinInputB" maxlength="4" placeholder="Confirm PIN" inputmode="numeric"/></div>
+          <button class="btn-primary" id="savePinBtn">Save PIN</button>
+          <button class="btn-ghost" id="removePinBtn">Remove PIN</button>
+          <div class="form-group"><label>Session Timeout (minutes, 0 = off)</label><input type="number" id="sessionTimeoutInput" min="0" max="120" placeholder="0"/></div>
+          <button class="btn-ghost" id="saveSecurityBtn">Save Security Settings</button>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <h3>👤 Profiles</h3>
+        <div class="form-stack">
+          <div class="form-group"><label>New Profile Name</label><input type="text" id="newProfileName" placeholder="e.g. Business, Travel"/></div>
+          <button class="btn-primary" id="addProfileBtn">Create Profile</button>
+          <div id="profileList"></div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <h3>🗂️ Data Management</h3>
+        <div class="form-stack">
+          <button class="btn-ghost" id="backupBtn">💾 Download Backup (.json)</button>
+          <div class="form-group"><label>Restore Backup</label><input type="file" id="restoreInput" accept=".json"/></div>
+          <button class="btn-ghost" id="printReportBtn">🖨️ Print Monthly Report</button>
+          <button class="btn-ghost" id="activityLogBtn">📋 View Activity Log</button>
+          <hr style="border-color:var(--border);margin:.5rem 0"/>
+          <button class="btn-danger" id="clearDataBtn">⚠️ Clear All Data</button>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <h3>⌨️ Keyboard Shortcuts</h3>
+        <div class="shortcuts-list" role="list">
+          <div class="shortcut" role="listitem"><span>New Transaction</span><kbd>Ctrl+N</kbd></div>
+          <div class="shortcut" role="listitem"><span>Undo</span><kbd>Ctrl+Z</kbd></div>
+          <div class="shortcut" role="listitem"><span>Redo</span><kbd>Ctrl+Y</kbd></div>
+          <div class="shortcut" role="listitem"><span>Dashboard</span><kbd>Ctrl+1</kbd></div>
+          <div class="shortcut" role="listitem"><span>Transactions</span><kbd>Ctrl+2</kbd></div>
+          <div class="shortcut" role="listitem"><span>Analytics</span><kbd>Ctrl+3</kbd></div>
+          <div class="shortcut" role="listitem"><span>Focus Search</span><kbd>/</kbd></div>
+          <div class="shortcut" role="listitem"><span>Lock App</span><kbd>Ctrl+L</kbd></div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <h3>🏷️ Custom Categories</h3>
+        <button class="btn-primary" id="newCategoryBtn" style="margin-bottom:1rem">+ New Category</button>
+        <div id="customCategoriesList"></div>
+      </div>
+
+      <div class="form-card">
+        <h3>🤖 AI Settings</h3>
+        <div class="form-stack">
+          <div class="form-group"><label>Anthropic API Key</label><input type="password" id="aiApiKeyInput" placeholder="sk-ant-..."/></div>
+          <button class="btn-primary" id="saveApiKeyBtn">Save Key</button>
+          <p style="color:var(--text-muted);font-size:.8rem">Required when running as a local file. Not needed on Claude.ai. Serve via <code>python -m http.server</code> for local AI features.</p>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <h3>📱 Install App (PWA)</h3>
+        <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:1rem">Install BudgetFlow Pro as an offline-capable app on your device.</p>
+        <button class="btn-primary" id="installPwaBtn" style="display:none">📲 Install App</button>
+        <p id="pwaStatus" style="color:var(--text-muted);font-size:.85rem">Serve via HTTP to enable install (e.g. <code>python -m http.server</code>).</p>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<!-- MOBILE BOTTOM NAV -->
+<nav class="bottom-nav" id="bottomNav" aria-label="Mobile navigation">
+  <button class="bnav-btn active" data-tab="dashboard">📊<span>Home</span></button>
+  <button class="bnav-btn" data-tab="transactions">💳<span>Txns</span></button>
+  <button class="bnav-btn" data-tab="analytics">📈<span>Stats</span></button>
+  <button class="bnav-btn" data-tab="currency">🔄<span>FX</span></button>
+  <button class="bnav-btn" data-tab="settings">⚙️<span>More</span></button>
+</nav>
+
+<script src="app.js"></script>
 </body>
 </html>
